@@ -11,19 +11,19 @@ import numpy as np
 from sklearn.metrics import calinski_harabasz_score
 from sklearn.manifold import TSNE
 
-# DEVICE
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Load AG News data (subset for speed)
+
 dataset = load_dataset("ag_news", split="train[:2000]")
 texts = dataset["text"]
 true_labels = dataset["label"]
 
-# Sentence embeddings
+
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
 embeddings = embedder.encode(texts, convert_to_tensor=True)
 
-# Custom Dataset
+
 class EmbeddingDataset(Dataset):
     def __init__(self, embeddings):
         self.embeddings = embeddings
@@ -34,7 +34,7 @@ class EmbeddingDataset(Dataset):
     def __getitem__(self, idx):
         return self.embeddings[idx], self.embeddings[idx]
 
-# Autoencoder for text embeddings
+
 class Autoencoder(nn.Module):
     def __init__(self, input_dim=384, hidden_dim=128, latent_dim=64):
         super().__init__()
@@ -54,7 +54,7 @@ class Autoencoder(nn.Module):
         x_hat = self.decoder(z)
         return x_hat
 
-# Train autoencoder
+
 autoencoder = Autoencoder().to(device)
 dataloader = DataLoader(EmbeddingDataset(embeddings), batch_size=32, shuffle=True)
 optimizer = torch.optim.Adam(autoencoder.parameters(), lr=1e-3)
@@ -74,12 +74,12 @@ for epoch in range(20):
         total_loss += loss.item()
     print(f"Epoch {epoch+1}, Loss: {total_loss:.4f}")
 
-# Encode all embeddings
+
 autoencoder.eval()
 with torch.no_grad():
     latent = autoencoder.encoder(embeddings.to(device).float()).cpu().numpy()
 
-# --- KMeans ---
+
 kmeans = KMeans(n_clusters=4, random_state=42)
 kmeans_preds = kmeans.fit_predict(latent)
 
@@ -91,7 +91,7 @@ print(f"  Silhouette Score: {sil_kmeans:.4f}")
 print(f"  Davies-Bouldin Index: {db_kmeans:.4f}")
 print(f"  Calinski-Harabasz Index: {ch_kmeans:.4f}")
 
-# --- DEC ---
+
 class ClusteringLayer(nn.Module):
     def __init__(self, n_clusters, embedding_dim):
         super().__init__()
@@ -119,7 +119,7 @@ def target_distribution(q):
     weight = q ** 2 / torch.sum(q, dim=0)
     return (weight.t() / torch.sum(weight, dim=1)).t()
 
-# Initialize DEC with KMeans centers
+
 dec = DEC(autoencoder, n_clusters=4).to(device)
 dec.clustering_layer.clusters.data = torch.tensor(kmeans.cluster_centers_, dtype=torch.float, device=device)
 
@@ -142,7 +142,7 @@ for epoch in range(20):
         total_loss += loss.item()
     print(f"Epoch {epoch+1}, KL Loss: {total_loss:.4f}")
 
-# Get final cluster assignments
+
 dec.eval()
 with torch.no_grad():
     final_latent = dec.encoder(embeddings.to(device).float()).cpu()
@@ -157,7 +157,7 @@ print(f"  Silhouette Score: {sil_dec:.4f}")
 print(f"  Davies-Bouldin Index: {db_dec:.4f}")
 print(f"  Calinski-Harabasz Index: {ch_dec:.4f}")
 
-# --- Visualization ---
+
 def visualize(latents, preds, title):
     reduced = PCA(n_components=2).fit_transform(latents)
     plt.figure(figsize=(8, 6))
@@ -180,11 +180,11 @@ def visualize_tsne(latents, preds, title):
     plt.ylabel("t-SNE 2")
     plt.show()
 
-# After PCA visualizations
+
 visualize_tsne(latent, kmeans_preds, "KMeans Clustering (t-SNE)")
 visualize_tsne(final_latent.numpy(), dec_preds, "DEC Clustering (t-SNE)")
 
-# Visualize label distributions for train and test sets
+
 def plot_label_distribution(labels, title):
     plt.figure(figsize=(5,3))
     plt.hist(labels, bins=np.arange(5)-0.5, rwidth=0.8, color='skyblue', edgecolor='black')
@@ -196,7 +196,7 @@ def plot_label_distribution(labels, title):
 
 plot_label_distribution(dataset["label"], "Train Set Label Distribution")
 
-# For test set
+
 test_dataset = load_dataset("ag_news", split="test[:2000]")
 plot_label_distribution(test_dataset["label"], "Test Set Label Distribution")
 
