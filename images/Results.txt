@@ -1,0 +1,11 @@
+KMeans:
+  Silhouette Score: 0.0346
+  Davies-Bouldin Index: 4.4172
+  Calinski-Harabasz Index: 57.4323
+
+
+
+DEC:
+  Silhouette Score: 0.8015
+  Davies-Bouldin Index: 0.2509
+  Calinski-Harabasz Index: 37361.4922
